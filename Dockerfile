@@ -13,4 +13,4 @@ RUN wget https://yt-dl.org/downloads/latest/youtube-dl -O /usr/local/bin/youtube
 WORKDIR /app
 RUN wget -O TS3AudioBot.zip https://splamy.de/api/nightly/ts3ab/master/download && unzip TS3AudioBot.zip && rm TS3AudioBot.zip
 
-CMD  ["mono", "TS3AudioBot.exe", "-c", "/config/TS3AudioBot.config"]
+CMD  ["mono", "TS3AudioBot.exe", "--non-interactive", "-c", "/config/TS3AudioBot.config"]
