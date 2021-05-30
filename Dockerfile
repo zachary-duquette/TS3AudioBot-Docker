@@ -1,16 +1,36 @@
-FROM ubuntu:18.04
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1-bionic
 
-RUN apt-get update && apt-get install -y ffmpeg wget p7zip-full gpg libopus-dev python
-
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
-RUN echo "deb http://download.mono-project.com/repo/debian stable-bionic main" > /etc/apt/sources.list.d/mono-official-stable.list \
-  && apt-get update \
-  && apt-get install -y mono-complete \
-  && rm -rf /var/lib/apt/lists/* /tmp/*
+# install all pre-requisites, these will be needed always
+RUN apt-get update && apt-get install -y \
+      openssl \
+      libopus-dev \
+      opus-tools \
+      ffmpeg \
+      zip
 
 RUN wget https://yt-dl.org/downloads/latest/youtube-dl -O /usr/local/bin/youtube-dl && chmod a+rx /usr/local/bin/youtube-dl
 
-WORKDIR /app
-RUN wget -O TS3AudioBot.zip https://splamy.de/api/nightly/ts3ab/master/download && 7z x TS3AudioBot.zip && rm -f TS3AudioBot.zip
+# which version and flavour of the audiobot to use
+ARG TS3_AUDIOBOT_RELEASE="0.11.0"
+ARG TS3_AUDIOBOT_FLAVOUR="TS3AudioBot_dotnet_core_3.1.zip"
 
-CMD  ["mono", "TS3AudioBot.exe", "--non-interactive", "-c", "/config/TS3AudioBot.config"]
+# download and install the TS3AudioBot in the specified version and flavour
+RUN mkdir -p /opt/TS3AudioBot \
+    && cd /opt/TS3AudioBot \
+    && curl -L https://github.com/Splamy/TS3AudioBot/releases/download/${TS3_AUDIOBOT_RELEASE}/${TS3_AUDIOBOT_FLAVOUR} -o TS3AudioBot.zip \
+    && unzip TS3AudioBot.zip
+
+# add user to run under
+RUN useradd -ms /bin/bash -u 9999 ts3bot
+
+# make data directory and chown it to the ts3bot user
+RUN mkdir -p /data
+RUN chown -R ts3bot:nogroup /data
+
+# set user to ts3bot, we dont want to be root from now on
+USER ts3bot
+
+# set the work dir to data, so users can properly mount their config files to this dir with -v /host/path/to/data:/data
+WORKDIR /data
+
+CMD ["dotnet", "/opt/TS3AudioBot/TS3AudioBot.dll", "--non-interactive"]
